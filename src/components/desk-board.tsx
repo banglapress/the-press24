@@ -1,7 +1,6 @@
 import { PieceCard } from "@/components/piece-card";
 import { MonthlyReport } from "@/components/monthly-report";
-import { EmptyDesk, Queue, Stat } from "@/components/pipeline";
-import { Pipeline } from "@/components/pipeline";
+import { EmptyDesk, Queue, Stat, Pipeline } from "@/components/pipeline";
 import { inRoleQueue } from "@/lib/press/gates";
 import { ROLES } from "@/lib/press/catalog";
 import type { Member, Piece, RoleId } from "@/lib/press/types";
@@ -10,7 +9,7 @@ function mineCount(role: RoleId, pieces: Piece[], viewer: Member | null) {
   return pieces.filter((p) => inRoleQueue(p, role, viewer)).length;
 }
 
-function WriterQueues({
+function WriterQueue({
   pieces,
   role,
   viewer,
@@ -21,9 +20,7 @@ function WriterQueues({
 }) {
   if (viewer?.isAdmin && viewer.role !== "writer") {
     const groups = new Map<string, { id: string; name: string; items: Piece[] }>();
-    for (const piece of pieces.filter(
-      (p) => p.stage === "topic" || p.stage === "scripting",
-    )) {
+    for (const piece of pieces.filter((p) => p.stage === "scripting")) {
       const id = piece.assignedWriterId || "_none";
       const name = piece.assignedWriterName || "রাইটার অ্যাসাইন হয়নি";
       const group = groups.get(id) ?? { id, name, items: [] };
@@ -31,16 +28,22 @@ function WriterQueues({
       groups.set(id, group);
     }
     const list = [...groups.values()].sort((a, b) =>
-      a.id === "_none" ? -1 : b.id === "_none" ? 1 : a.name.localeCompare(b.name, "bn"),
+      a.id === "_none"
+        ? -1
+        : b.id === "_none"
+          ? 1
+          : a.name.localeCompare(b.name, "bn"),
     );
+
     if (list.length === 0) {
       return (
         <EmptyDesk
           title="রাইটিং কিউ খালি"
-          hint="ভিডিও রিভিউ রাইটার অ্যাসাইন করলে এখানে নাম ধরে উঠবে।"
+          hint="নতুন স্ক্রিপ্ট শুরু করলে তা নির্ধারিত রাইটারের কিউতে উঠবে।"
         />
       );
     }
+
     return (
       <div className="space-y-6">
         {list.map((group) => (
@@ -64,46 +67,28 @@ function WriterQueues({
 
   const mine = pieces.filter(
     (p) =>
-      (p.stage === "topic" || p.stage === "scripting") &&
+      p.stage === "scripting" &&
       (viewer?.isAdmin || p.assignedWriterId === viewer?.userId),
   );
-  const fresh = mine.filter((p) => p.stage === "topic");
-  const drafts = mine.filter((p) => p.stage === "scripting");
-  if (fresh.length === 0 && drafts.length === 0) {
+
+  if (mine.length === 0) {
     return (
       <EmptyDesk
         title="রাইটিং কিউ খালি"
-        hint="ভিডিও রিভিউ আপনাকে বিষয় অ্যাসাইন করলে এখানে আসবে।"
+        hint="নতুন স্ক্রিপ্ট শুরু করুন। স্ক্রিপ্ট রিভিউতে জমা দিলে পরের গেট খুলবে।"
       />
     );
   }
+
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <section className="space-y-3">
-        <h2 className="font-serif text-lg font-semibold">নতুন বিষয়</h2>
-        {fresh.length === 0 ? (
-          <p className="text-sm text-muted-foreground">নতুন বিষয় নেই।</p>
-        ) : (
-          <div className="grid gap-3">
-            {fresh.map((piece) => (
-              <PieceCard key={piece.id} piece={piece} role={role} viewer={viewer} />
-            ))}
-          </div>
-        )}
-      </section>
-      <section className="space-y-3">
-        <h2 className="font-serif text-lg font-semibold">খসড়া</h2>
-        {drafts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">খসড়া চলছে না।</p>
-        ) : (
-          <div className="grid gap-3">
-            {drafts.map((piece) => (
-              <PieceCard key={piece.id} piece={piece} role={role} viewer={viewer} />
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
+    <section className="space-y-3">
+      <h2 className="font-serif text-lg font-semibold">স্ক্রিপ্ট</h2>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {mine.map((piece) => (
+          <PieceCard key={piece.id} piece={piece} role={role} viewer={viewer} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -117,35 +102,8 @@ function DeskQueues({
   viewer: Member | null;
 }) {
   switch (role) {
-    case "planner":
-      return (
-        <>
-          <Queue
-            role={role}
-            viewer={viewer}
-            title="অপেক্ষমান পিচ"
-            pieces={pieces.filter(
-              (p) =>
-                p.stage === "pitch" &&
-                (viewer?.isAdmin || p.pitchedByUserId === viewer?.userId),
-            )}
-            empty="বিষয় পাঠান। ভিডিও রিভিউ পাস করে রাইটার অ্যাসাইন করলে কিউতে যাবে।"
-          />
-          <Queue
-            role={role}
-            viewer={viewer}
-            title="ফেরত পিচ"
-            pieces={pieces.filter(
-              (p) =>
-                p.stage === "rejected" &&
-                (viewer?.isAdmin || p.pitchedByUserId === viewer?.userId),
-            )}
-            empty="নাকচ পিচ এখানে আসবে।"
-          />
-        </>
-      );
     case "writer":
-      return <WriterQueues pieces={pieces} role={role} viewer={viewer} />;
+      return <WriterQueue pieces={pieces} role={role} viewer={viewer} />;
     case "script_editor":
       return (
         <Queue
@@ -188,33 +146,13 @@ function DeskQueues({
       );
     case "planning_editor":
       return (
-        <>
-          <Queue
-            role={role}
-            viewer={viewer}
-            title="পিচ গেট"
-            pieces={pieces.filter((p) => p.stage === "pitch")}
-            empty="কেউ বিষয় পাঠালে এখানে আসবে। পাস করে একজন স্ক্রিপ্ট রাইটার অ্যাসাইন করুন।"
-          />
-          <Queue
-            role={role}
-            viewer={viewer}
-            title="রাইটার অ্যাসাইন বাকি"
-            pieces={pieces.filter(
-              (p) =>
-                (p.stage === "topic" || p.stage === "scripting") &&
-                !p.assignedWriterId,
-            )}
-            empty="সব বিষয়ে রাইটার আছে।"
-          />
-          <Queue
-            role={role}
-            viewer={viewer}
-            title="ভিডিও রিভিউ"
-            pieces={pieces.filter((p) => p.stage === "cut_review")}
-            empty="কাট জমা হলে শিরোনাম ও থাম্বনেইল এখানেই দিতে হবে।"
-          />
-        </>
+        <Queue
+          role={role}
+          viewer={viewer}
+          title="ভিডিও রিভিউ"
+          pieces={pieces.filter((p) => p.stage === "cut_review")}
+          empty="কাট জমা হলে শিরোনাম ও থাম্বনেইল এখানেই দিতে হবে।"
+        />
       );
     case "social":
       return (
@@ -241,9 +179,7 @@ export function DeskBoard({
   asAdmin: boolean;
 }) {
   const published = pieces.filter((p) => p.stage === "published").length;
-  const active = pieces.filter(
-    (p) => p.stage !== "published" && p.stage !== "rejected",
-  ).length;
+  const active = pieces.filter((p) => p.stage !== "published").length;
   const mine = mineCount(role, pieces, viewer);
 
   return (
@@ -262,7 +198,7 @@ export function DeskBoard({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label={role === "planner" ? "আমার পিচ" : "আমার গেট"} value={mine} />
+        <Stat label="আমার গেট" value={mine} />
         <Stat label="প্রকাশিত" value={published} />
         <Stat label="চলমান" value={active} />
       </div>
