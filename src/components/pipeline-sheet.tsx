@@ -4,7 +4,6 @@ import type { Piece } from "@/lib/press/types";
 
 export function PipelineSheet({ pieces }: { pieces: Piece[] }) {
   const rows = [...pieces]
-    .filter((p) => p.stage !== "rejected")
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 
   return (
@@ -14,14 +13,14 @@ export function PipelineSheet({ pieces }: { pieces: Piece[] }) {
         {formatBnLong()}
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        প্রতিদিনের পাইপলাইন — আইডিয়া থেকে আপলোড
+        প্রতিদিনের পাইপলাইন — স্ক্রিপ্ট থেকে আপলোড
       </p>
       <div className="-mx-4 mt-4 overflow-x-auto px-4">
         <table className="w-full min-w-4xl border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
               <th className="sticky left-0 bg-card py-3 pr-3 font-medium">তারিখ</th>
-              <th className="py-3 pr-3 font-medium">আইডিয়া</th>
+              <th className="py-3 pr-3 font-medium">বিষয়</th>
               <th className="py-3 pr-3 font-medium">স্ক্রিপ্ট</th>
               <th className="py-3 pr-3 font-medium">স্ট্যাটাস</th>
               <th className="py-3 pr-3 font-medium">স্ক্রিপ্ট রাইটার</th>
