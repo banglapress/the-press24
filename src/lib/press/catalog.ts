@@ -8,11 +8,6 @@ export const ROLES: Record<
   RoleId,
   { label: string; desk: string; youDo: string }
 > = {
-  planner: {
-    label: "বিষয় নির্বাচক",
-    desk: "প্ল্যানিং",
-    youDo: "বিষয় পাঠান। অনুমোদন ও রাইটার অ্যাসাইন ভিডিও রিভিউয়ের।",
-  },
   writer: {
     label: "স্ক্রিপ্ট রাইটার",
     desk: "রাইটিং",
@@ -51,8 +46,6 @@ export const ROLES: Record<
 };
 
 export const STAGES: Record<StageId, { label: string; hint: string }> = {
-  pitch: { label: "পিচ", hint: "ভিডিও রিভিউয়ের অনুমোদন বাকি" },
-  topic: { label: "বিষয়", hint: "রাইটার অ্যাসাইন, স্ক্রিপ্ট বাকি" },
   scripting: { label: "স্ক্রিপ্ট", hint: "লেখা চলছে" },
   script_review: { label: "স্ক্রিপ্ট রিভিউ", hint: "এডিটরের গেট" },
   shooting: { label: "শুট ও প্রেজেন্ট", hint: "প্রোডিউসার ও প্রেজেন্টার দুজনেই ডান" },
@@ -60,12 +53,9 @@ export const STAGES: Record<StageId, { label: string; hint: string }> = {
   cut_review: { label: "ভিডিও রিভিউ", hint: "ভিডিও রিভিউ গেট" },
   upload: { label: "আপলোড", hint: "ফেসবুক + ইউটিউব" },
   published: { label: "প্রকাশিত", hint: "দুই চ্যানেলেই" },
-  rejected: { label: "ফেরত পিচ", hint: "ভিডিও রিভিউ নাকচ করেছেন" },
 };
 
 export const PIPELINE_STAGES: StageId[] = [
-  "pitch",
-  "topic",
   "scripting",
   "script_review",
   "shooting",
@@ -76,7 +66,6 @@ export const PIPELINE_STAGES: StageId[] = [
 ];
 
 export const ROLE_GATE_STAGE: Record<RoleId, StageId | null> = {
-  planner: null,
   writer: "scripting",
   script_editor: "script_review",
   producer: "shooting",
