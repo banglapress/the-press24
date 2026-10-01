@@ -71,7 +71,7 @@ function mapMember(row: MemberRow): Member {
 }
 
 function mapPiece(row: PieceRow): Piece {
-  const stage = isStageId(row.stage) ? row.stage : "pitch";
+  const stage = isStageId(row.stage) ? row.stage : "scripting";
   return {
     id: row.id,
     title: row.title,
@@ -300,7 +300,7 @@ export const setMemberAdmin = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const submitPitch = createServerFn({ method: "POST" })
+export const createScript = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: { title: string; topicNote: string }) => input)
   .handler(async ({ context, data }) => {
@@ -308,121 +308,22 @@ export const submitPitch = createServerFn({ method: "POST" })
     if (!title) throw new GateError("শিরোনাম লাগবে");
     const sql = await getSql();
     const me = await ensureMember(sql, context.userId);
+    if (!me.isAdmin && me.role !== "writer") {
+      throw new GateError("নতুন স্ক্রিপ্ট শুরু করতে স্ক্রিপ্ট রাইটার রোল লাগবে");
+    }
     const id = crypto.randomUUID();
     await sql`
       insert into pieces (
-        id, title, topic_note, stage, pitched_by_user_id, pitched_by_name
+        id, title, topic_note, stage, pitched_by_user_id, pitched_by_name,
+        assigned_writer_id, assigned_writer_name
       ) values (
-        ${id}, ${title}, ${data.topicNote.trim()}, ${"pitch"}, ${me.userId}, ${me.displayName}
+        ${id}, ${title}, ${data.topicNote.trim()}, ${"scripting"},
+        ${me.userId}, ${me.displayName},
+        ${me.userId}, ${me.displayName}
       )
     `;
-    await addEvent(sql, id, me, "পিচ পাঠানো", title);
+    await addEvent(sql, id, me, "স্ক্রিপ্ট শুরু", title);
     return { id };
-  });
-
-export const approvePitch = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: { id: string; writerId: string }) => input)
-  .handler(async ({ context, data }) => {
-    const sql = await getSql();
-    const me = await ensureMember(sql, context.userId);
-    const piece = await loadPiece(sql, data.id);
-    if (piece.stage !== "pitch") throw new GateError("এই পিচ আর অনুমোদনের অপেক্ষায় নেই");
-    if (!me.isAdmin && me.role !== "planning_editor") {
-      throw new GateError("ভিডিও রিভিউ পাস করবেন");
-    }
-    const writer = await sql<MemberRow>`
-      select user_id, email, display_name, role, is_admin
-      from members where user_id = ${data.writerId} limit 1
-    `;
-    if (!writer[0] || writer[0].role !== "writer") {
-      throw new GateError("স্ক্রিপ্ট রাইটার বেছে দিন");
-    }
-    await sql`
-      update pieces
-      set stage = ${"topic"},
-          assigned_writer_id = ${writer[0].user_id},
-          assigned_writer_name = ${writer[0].display_name},
-          return_reason = ${""},
-          updated_at = now()
-      where id = ${data.id}
-    `;
-    await addEvent(sql, data.id, me, "পিচ অনুমোদন", writer[0].display_name);
-    return { ok: true };
-  });
-
-export const rejectPitch = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: { id: string; reason: string }) => input)
-  .handler(async ({ context, data }) => {
-    const reason = data.reason.trim();
-    if (!reason) throw new GateError("কারণ ছাড়া গেট খুলবে না");
-    const sql = await getSql();
-    const me = await ensureMember(sql, context.userId);
-    const piece = await loadPiece(sql, data.id);
-    if (piece.stage !== "pitch") throw new GateError("এই পিচ নাকচ করা যাবে না");
-    if (!me.isAdmin && me.role !== "planning_editor") {
-      throw new GateError("ভিডিও রিভিউ নাকচ করবেন");
-    }
-    await sql`
-      update pieces
-      set stage = ${"rejected"}, return_reason = ${reason}, updated_at = now()
-      where id = ${data.id}
-    `;
-    await addEvent(sql, data.id, me, "পিচ নাকচ", reason);
-    return { ok: true };
-  });
-
-export const assignWriter = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: { id: string; writerId: string }) => input)
-  .handler(async ({ context, data }) => {
-    const sql = await getSql();
-    const me = await ensureMember(sql, context.userId);
-    const piece = await loadPiece(sql, data.id);
-    if (piece.stage !== "topic" && piece.stage !== "scripting" && piece.stage !== "pitch") {
-      throw new GateError("এখন রাইটার বদলানো যাবে না");
-    }
-    if (!me.isAdmin && me.role !== "planning_editor") {
-      throw new GateError("ভিডিও রিভিউ রাইটার অ্যাসাইন করবেন");
-    }
-    const writer = await sql<MemberRow>`
-      select user_id, email, display_name, role, is_admin
-      from members where user_id = ${data.writerId} limit 1
-    `;
-    if (!writer[0] || writer[0].role !== "writer") {
-      throw new GateError("স্ক্রিপ্ট রাইটার বেছে দিন");
-    }
-    const nextStage: StageId = piece.stage === "pitch" ? "topic" : piece.stage;
-    await sql`
-      update pieces
-      set assigned_writer_id = ${writer[0].user_id},
-          assigned_writer_name = ${writer[0].display_name},
-          stage = ${nextStage},
-          updated_at = now()
-      where id = ${data.id}
-    `;
-    await addEvent(sql, data.id, me, "রাইটার অ্যাসাইন", writer[0].display_name);
-    return { ok: true };
-  });
-
-export const startScript = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((id: string) => id)
-  .handler(async ({ context, data: id }) => {
-    const sql = await getSql();
-    const me = await ensureMember(sql, context.userId);
-    const piece = await loadPiece(sql, id);
-    if (piece.stage !== "topic") throw new GateError("স্ক্রিপ্ট ইতিমধ্যে খুলেছে");
-    assertPass(piece, me, "writer");
-    if (!me.isAdmin && piece.assignedWriterId !== me.userId) {
-      throw new GateError("এটি আপনার কিউ নয়");
-    }
-    await sql`
-      update pieces set stage = ${"scripting"}, updated_at = now() where id = ${id}
-    `;
-    await addEvent(sql, id, me, "স্ক্রিপ্ট লেখা খুলেছে");
-    return { ok: true };
   });
 
 export const saveScript = createServerFn({ method: "POST" })
@@ -432,17 +333,16 @@ export const saveScript = createServerFn({ method: "POST" })
     const sql = await getSql();
     const me = await ensureMember(sql, context.userId);
     const piece = await loadPiece(sql, data.id);
-    if (piece.stage !== "topic" && piece.stage !== "scripting") {
-      throw new GateError("রাইটার আর শুট মার্ক করতে পারবেন না");
+    if (piece.stage !== "scripting") {
+      throw new GateError("স্ক্রিপ্ট এখন খোলা নেই");
     }
     assertPass(piece, me, "writer");
     if (!me.isAdmin && piece.assignedWriterId !== me.userId) {
       throw new GateError("এটি আপনার কিউ নয়");
     }
-    const next: StageId = piece.stage === "topic" ? "scripting" : piece.stage;
     await sql`
       update pieces
-      set script_body = ${data.scriptBody}, stage = ${next}, updated_at = now()
+      set script_body = ${data.scriptBody}, updated_at = now()
       where id = ${data.id}
     `;
     await addEvent(sql, data.id, me, "খসড়া সেভ হয়েছে");
@@ -458,7 +358,7 @@ export const submitScript = createServerFn({ method: "POST" })
     const sql = await getSql();
     const me = await ensureMember(sql, context.userId);
     const piece = await loadPiece(sql, data.id);
-    if (piece.stage !== "topic" && piece.stage !== "scripting") {
+    if (piece.stage !== "scripting") {
       throw new GateError("এডিটরে জমা দেওয়া যাবে না");
     }
     assertPass(piece, me, "writer");
@@ -760,7 +660,7 @@ export const getMyReport = createServerFn({ method: "GET" })
         and e.at >= ${start}::timestamptz
         and e.at < ${end}::timestamptz
     `;
-    const topics = events.filter((e) => e.action === "পিচ পাঠানো").length;
+    const topics = events.filter((e) => e.action === "স্ক্রিপ্ট শুরু").length;
     const scripts = events.filter((e) => e.action === "স্ক্রিপ্ট এডিটরের গেটে গেছে").length;
     const edits = events.filter((e) => e.action === "ভিডিও রিভিউয়ের গেটে").length;
     const shoots = events.filter((e) => e.action === "শুট ডান").length;
