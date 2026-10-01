@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 function isViewerGate(stage: (typeof PIPELINE_STAGES)[number], role: RoleId | null) {
   if (!role) return false;
-  if (role === "planning_editor") return stage === "pitch" || stage === "cut_review";
+  if (role === "planning_editor") return stage === "cut_review";
   return ROLE_GATE_STAGE[role] === stage;
 }
 
