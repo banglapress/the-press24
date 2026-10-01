@@ -1,5 +1,4 @@
 export const ROLE_IDS = [
-  "planner",
   "writer",
   "script_editor",
   "producer",
@@ -12,8 +11,6 @@ export const ROLE_IDS = [
 export type RoleId = (typeof ROLE_IDS)[number];
 
 export const STAGE_IDS = [
-  "pitch",
-  "topic",
   "scripting",
   "script_review",
   "shooting",
@@ -21,7 +18,6 @@ export const STAGE_IDS = [
   "cut_review",
   "upload",
   "published",
-  "rejected",
 ] as const;
 
 export type StageId = (typeof STAGE_IDS)[number];
@@ -86,6 +82,5 @@ export function sheetStatus(piece: Piece): string {
   if (piece.stage === "upload") return "রিভিউ ডান";
   if (piece.stage === "cut_review") return "এডিট ডান";
   if (piece.stage === "editing" || piece.stage === "shooting") return "স্ক্রিপ্ট ডান";
-  if (piece.stage === "rejected") return "ফেরত";
   return "চলমান";
 }
