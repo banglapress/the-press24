@@ -33,7 +33,7 @@ function AdminDesk() {
   const list = members.data ?? [];
   const items = pieces.data ?? [];
   const waiting = list.filter((m) => !m.role && !m.isAdmin).length;
-  const active = items.filter((p) => p.stage !== "published" && p.stage !== "rejected").length;
+  const active = items.filter((p) => p.stage !== "published").length;
   const published = items.filter((p) => p.stage === "published").length;
   const adminCount = list.filter((m) => m.isAdmin).length;
 
