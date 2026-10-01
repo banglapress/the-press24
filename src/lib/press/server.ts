@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
-import { isRoleId, isStageId, type Member, type Piece, type PieceEvent, type RoleId, type StageId } from "./types";
+import { isRoleId, isStageId, type Member, type Piece, type PieceEvent, type RoleId } from "./types";
 import { GateError, canPassGate } from "./gates";
 import { monthStartIso, nextMonthStartIso } from "./dates";
 
