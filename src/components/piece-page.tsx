@@ -10,21 +10,16 @@ import { PIPELINE_STAGES, ROLES, STAGES } from "@/lib/press/catalog";
 import { canPassGate, deskForPiece } from "@/lib/press/gates";
 import {
   approveCut,
-  approvePitch,
   approveScript,
-  assignWriter,
   getPiece,
   listRoleMembers,
-  listWriters,
   markPresent,
   markShoot,
   markUpload,
   rejectCut,
-  rejectPitch,
   rejectScript,
   saveCut,
   saveScript,
-  startScript,
   submitCut,
   submitScript,
 } from "@/lib/press/server";
@@ -43,38 +38,6 @@ function usePieceMutations(id: string) {
     void queryClient.invalidateQueries({ queryKey: ["my-report"] });
   };
   const fail = (error: unknown) => toast.error(errMsg(error));
-  const approvePitchMut = useMutation({
-    mutationFn: (writerId: string) => approvePitch({ data: { id, writerId } }),
-    onSuccess: () => {
-      toast.success("রাইটারের কিউতে গেছে");
-      invalidate();
-    },
-    onError: fail,
-  });
-  const rejectPitchMut = useMutation({
-    mutationFn: (reason: string) => rejectPitch({ data: { id, reason } }),
-    onSuccess: () => {
-      toast.success("পিচ নাকচ");
-      invalidate();
-    },
-    onError: fail,
-  });
-  const assignWriterMut = useMutation({
-    mutationFn: (writerId: string) => assignWriter({ data: { id, writerId } }),
-    onSuccess: () => {
-      toast.success("রাইটার বদলানো হয়েছে");
-      invalidate();
-    },
-    onError: fail,
-  });
-  const startScriptMut = useMutation({
-    mutationFn: () => startScript({ data: id }),
-    onSuccess: () => {
-      toast.success("স্ক্রিপ্ট লেখা খুলেছে");
-      invalidate();
-    },
-    onError: fail,
-  });
   const saveScriptMut = useMutation({
     mutationFn: (scriptBody: string) => saveScript({ data: { id, scriptBody } }),
     onSuccess: () => {
@@ -170,10 +133,6 @@ function usePieceMutations(id: string) {
     onError: fail,
   });
   return {
-    approvePitch: approvePitchMut,
-    rejectPitch: rejectPitchMut,
-    assignWriter: assignWriterMut,
-    startScript: startScriptMut,
     saveScript: saveScriptMut,
     submitScript: submitScriptMut,
     approveScript: approveScriptMut,
@@ -213,7 +172,7 @@ function ReturnBox({
         required
       />
       <p className="text-xs text-muted-foreground">
-        কারণ ছাড়া গেট খুলবে না। পিচ নাকচ হলে রাইটারের কিউতে যাবে না।
+        কারণটি লিখে তারপর গেট থেকে ফেরত পাঠান।
       </p>
       <Button type="submit" variant="destructive" disabled={pending}>
         ফেরত পাঠান
@@ -266,45 +225,6 @@ function RoleSelect({
   );
 }
 
-function WriterSelect({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const writers = useQuery({ queryKey: ["writers"], queryFn: () => listWriters() });
-  if (writers.isLoading) {
-    return <p className="text-sm text-muted-foreground">রাইটার তালিকা আসছে…</p>;
-  }
-  const list = writers.data ?? [];
-  if (list.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        অ্যাডমিনকে স্ক্রিপ্ট রাইটার রোল দিতে বলুন।
-      </p>
-    );
-  }
-  return (
-    <div>
-      <Label htmlFor="writer">স্ক্রিপ্ট রাইটার</Label>
-      <select
-        id="writer"
-        className="mt-2 flex h-11 w-full rounded-md border border-input bg-card px-3 text-sm"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">রাইটার বেছে দিন</option>
-        {list.map((w) => (
-          <option key={w.userId} value={w.userId}>
-            {w.displayName}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 function StageActions({
   piece,
   member,
@@ -324,17 +244,6 @@ function StageActions({
   const [proposedTitle, setProposedTitle] = useState(piece.proposedTitle);
   const [thumb, setThumb] = useState(piece.thumbnailNote);
   const open = canPassGate(piece, member.role, member);
-
-  if (piece.stage === "rejected") {
-    return (
-      <div className="rounded-2xl bg-card p-4 shadow-[var(--shadow-border)]">
-        <p className="font-medium">এই পিচ নাকচ হয়েছে। নতুন করে বিষয় পাঠাতে হবে।</p>
-        {piece.returnReason ? (
-          <p className="mt-2 text-sm text-muted-foreground">{piece.returnReason}</p>
-        ) : null}
-      </div>
-    );
-  }
 
   if (piece.stage === "published") {
     return (
@@ -438,92 +347,46 @@ function StageActions({
     );
   }
 
-  if (piece.stage === "pitch") {
+  if (piece.stage === "scripting") {
+    const isWriter =
+      member.isAdmin ||
+      (member.role === "writer" && piece.assignedWriterId === member.userId);
+    if (!isWriter) {
+      return (
+        <div className="rounded-2xl bg-muted/60 p-4 text-sm text-muted-foreground">
+          এই স্ক্রিপ্টটি নির্ধারিত রাইটারের কিউ।
+        </div>
+      );
+    }
     return (
-      <div className="space-y-4 rounded-2xl bg-card p-4 shadow-[var(--shadow-border)]">
+      <div className="space-y-3 rounded-2xl bg-card p-4 shadow-[var(--shadow-border)]">
         <div>
-          <h2 className="font-serif text-lg font-semibold">পিচ অনুমোদন</h2>
+          <h2 className="font-serif text-lg font-semibold">স্ক্রিপ্ট</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            পাস করলেই নির্দিষ্ট স্ক্রিপ্ট রাইটারের কিউতে যাবে — শেয়ার করা কিউ নয়।
+            এখানেই লেখা, এখান থেকেই স্ক্রিপ্ট রিভিউতে জমা দিন।
           </p>
         </div>
-        <WriterSelect value={writerId} onChange={setWriterId} />
+        <Textarea
+          value={script}
+          onChange={(e) => setScript(e.target.value)}
+          placeholder="হুক, বডি, সিটিএ…"
+          className="min-h-48"
+        />
         <div className="flex flex-wrap gap-2">
           <Button
-            disabled={!writerId || mut.approvePitch.isPending}
-            onClick={() => mut.approvePitch.mutate(writerId)}
+            variant="outline"
+            disabled={mut.saveScript.isPending}
+            onClick={() => mut.saveScript.mutate(script)}
           >
-            পাস — রাইটারের কিউতে
+            খসড়া সেভ
+          </Button>
+          <Button
+            disabled={mut.submitScript.isPending}
+            onClick={() => mut.submitScript.mutate(script)}
+          >
+            এডিটরের কাছে জমা
           </Button>
         </div>
-        <ReturnBox
-          pending={mut.rejectPitch.isPending}
-          onSubmit={(reason) => mut.rejectPitch.mutate(reason)}
-        />
-      </div>
-    );
-  }
-
-  if (piece.stage === "topic" || piece.stage === "scripting") {
-    const isWriter =
-      member.isAdmin || piece.assignedWriterId === member.userId;
-    const needsAssign =
-      !piece.assignedWriterId &&
-      (member.isAdmin || member.role === "planning_editor");
-    return (
-      <div className="space-y-4">
-        {needsAssign ? (
-          <div className="space-y-3 rounded-2xl bg-card p-4 shadow-[var(--shadow-border)]">
-            <h2 className="font-serif text-lg font-semibold">রাইটার অ্যাসাইন</h2>
-            <WriterSelect value={writerId} onChange={setWriterId} />
-            <Button
-              disabled={!writerId || mut.assignWriter.isPending}
-              onClick={() => mut.assignWriter.mutate(writerId)}
-            >
-              রাইটার অ্যাসাইন
-            </Button>
-          </div>
-        ) : null}
-        {isWriter ? (
-          <div className="space-y-3 rounded-2xl bg-card p-4 shadow-[var(--shadow-border)]">
-            <div>
-              <h2 className="font-serif text-lg font-semibold">স্ক্রিপ্ট</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                অফিসের লোকাল ফোল্ডার নয় — এখানেই লেখা, এখান থেকেই রিভিউ।
-              </p>
-            </div>
-            {piece.stage === "topic" ? (
-              <Button
-                variant="outline"
-                disabled={mut.startScript.isPending}
-                onClick={() => mut.startScript.mutate()}
-              >
-                স্ক্রিপ্ট শুরু করুন
-              </Button>
-            ) : null}
-            <Textarea
-              value={script}
-              onChange={(e) => setScript(e.target.value)}
-              placeholder="হুক, বডি, সিটিএ…"
-              className="min-h-48"
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                disabled={mut.saveScript.isPending}
-                onClick={() => mut.saveScript.mutate(script)}
-              >
-                খসড়া সেভ
-              </Button>
-              <Button
-                disabled={mut.submitScript.isPending}
-                onClick={() => mut.submitScript.mutate(script)}
-              >
-                এডিটরের কাছে জমা
-              </Button>
-            </div>
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -759,7 +622,7 @@ export function PiecePage({
           {piece.title}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          পিচ: {piece.pitchedByName} · রাইটার: {piece.assignedWriterName || "অ্যাসাইন হয়নি"}
+          তৈরি করেছেন: {piece.pitchedByName} · রাইটার: {piece.assignedWriterName || "অ্যাসাইন হয়নি"}
           {" · "}প্রেজেন্টার: {piece.assignedPresenterName || "অ্যাসাইন হয়নি"}
           {" · "}এডিটর: {piece.assignedEditorName || "অ্যাসাইন হয়নি"}
         </p>
