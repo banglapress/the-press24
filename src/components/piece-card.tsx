@@ -71,7 +71,7 @@ export function PieceCard({
         )}
       </div>
       <p className="mt-1.5 text-xs leading-snug text-muted-foreground">
-        পিচ: {piece.pitchedByName || "—"} · রাইটার:{" "}
+        শুরু: {piece.pitchedByName || "—"} · রাইটার:{" "}
         {piece.assignedWriterName || "অ্যাসাইন হয়নি"}
         {piece.assignedPresenterName
           ? ` · প্রেজেন্টার: ${piece.assignedPresenterName}`
