@@ -46,7 +46,7 @@ export function NewScriptDialog({ label = "নতুন স্ক্রিপ্
         <DialogHeader>
           <DialogTitle>নতুন স্ক্রিপ্ট</DialogTitle>
           <DialogDescription>
-            কোনো পিচ বা অনুমোদন ধাপ নেই। বিষয় লিখে সরাসরি স্ক্রিপ্টে চলে যান।
+            কোনো আলাদা অনুমোদন ধাপ নেই। বিষয় লিখে সরাসরি স্ক্রিপ্টে চলে যান।
           </DialogDescription>
         </DialogHeader>
         <form
