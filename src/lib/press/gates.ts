@@ -3,7 +3,6 @@ import type { Member, Piece, RoleId, StageId } from "./types";
 
 export function deskForStage(stage: StageId): RoleId | null {
   switch (stage) {
-    case "topic":
     case "scripting":
       return "writer";
     case "script_review":
@@ -17,7 +16,6 @@ export function deskForStage(stage: StageId): RoleId | null {
     case "upload":
       return "social";
     case "published":
-    case "rejected":
       return null;
   }
 }
@@ -91,15 +89,9 @@ export function lockReason(
   viewer: Pick<Member, "userId" | "isAdmin"> | null,
 ): string | null {
   if (canPassGate(piece, role, viewer)) return null;
-  if (
-    role === "writer" &&
-    (piece.stage === "topic" || piece.stage === "scripting")
-  ) {
+  if (role === "writer" && piece.stage === "scripting") {
     if (piece.assignedWriterId && piece.assignedWriterId !== viewer?.userId) {
       return `এটি ${piece.assignedWriterName || "অন্য রাইটার"}-এর কিউ।`;
-    }
-    if (!piece.assignedWriterId) {
-      return "ভিডিও রিভিউ এখনো রাইটার অ্যাসাইন করেননি।";
     }
   }
   if (role === "producer" && piece.stage === "shooting" && piece.producerDone) {
@@ -119,7 +111,6 @@ export function lockReason(
     if (desk === role) return null;
     return `এখন ${ROLES[desk].label} কাজ করবেন। আপনি এই ধাপ পাস করতে পারবেন না।`;
   }
-  if (piece.stage === "rejected") return "এই পিচ নাকচ হয়েছে।";
   return "এই আইটেম প্রকাশিত। আর কোনো ধাপ বাকি নেই।";
 }
 
