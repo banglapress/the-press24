@@ -3,8 +3,6 @@ import type { Member, Piece, RoleId, StageId } from "./types";
 
 export function deskForStage(stage: StageId): RoleId | null {
   switch (stage) {
-    case "pitch":
-      return "planning_editor";
     case "topic":
     case "scripting":
       return "writer";
@@ -47,24 +45,13 @@ export function inRoleQueue(
   role: RoleId,
   viewer: Pick<Member, "userId" | "isAdmin"> | null,
 ): boolean {
-  if (role === "planner") {
-    return (
-      piece.stage === "pitch" &&
-      (!!viewer?.isAdmin || piece.pitchedByUserId === viewer?.userId)
-    );
-  }
   if (role === "writer") {
-    if (piece.stage !== "topic" && piece.stage !== "scripting") return false;
+    if (piece.stage !== "scripting") return false;
     if (viewer?.isAdmin) return true;
     return !!viewer?.userId && piece.assignedWriterId === viewer.userId;
   }
   if (role === "planning_editor") {
-    return (
-      piece.stage === "pitch" ||
-      piece.stage === "cut_review" ||
-      ((piece.stage === "topic" || piece.stage === "scripting") &&
-        !piece.assignedWriterId)
-    );
+    return piece.stage === "cut_review";
   }
   if (role === "producer") {
     return (
