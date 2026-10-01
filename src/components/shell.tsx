@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { UserButton } from "@/lib/auth/gates";
 import { APP_NAME, APP_NAME_BN, APP_TAGLINE, ROLES } from "@/lib/press/catalog";
-import { PitchDialog } from "@/components/pitch-dialog";
+import { NewScriptDialog } from "@/components/new-script-dialog";
 import { useMember } from "@/components/guards";
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -40,7 +40,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 ডেস্ক
               </Link>
             ) : null}
-            <PitchDialog />
+            {(me.data?.isAdmin || role === "writer") ? <NewScriptDialog /> : null}
             <UserButton />
           </div>
         </div>
@@ -66,7 +66,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         ) : me.data ? (
           <div className="border-t border-border/70 bg-muted/50">
             <div className="mx-auto max-w-[1400px] px-4 py-2 text-xs text-muted-foreground sm:text-sm">
-              রোল অপেক্ষমান — বিষয় পাঠাতে পারেন। ভিডিও রিভিউ পাস করলে রাইটারের কিউতে যাবে।
+              রোল অপেক্ষমান — অ্যাডমিনের কাছ থেকে রোল নিন। স্ক্রিপ্ট রাইটার রোল পেলে সরাসরি স্ক্রিপ্ট শুরু করতে পারবেন।
             </div>
           </div>
         ) : null}
